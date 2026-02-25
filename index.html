@@ -521,8 +521,36 @@
         </div>
     </div>
 
-    <script>
-        // Dados completos - 78 serviços em 21 categorias
+        <script>
+        // DATA E HORA AUTOMÁTICA - Função isolada
+        function updateDateTime() {
+            try {
+                const now = new Date();
+                const day = String(now.getDate()).padStart(2, '0');
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const year = now.getFullYear();
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const seconds = String(now.getSeconds()).padStart(2, '0');
+                
+                const formatted = `${day}/${month}/${year}, ${hours}:${minutes}:${seconds}`;
+                
+                const element = document.getElementById('updateTime');
+                if (element) {
+                    element.textContent = formatted;
+                }
+            } catch (e) {
+                console.error('Erro ao atualizar data:', e);
+            }
+        }
+
+        // Executar imediatamente
+        updateDateTime();
+        
+        // Atualizar a cada segundo
+        setInterval(updateDateTime, 1000);
+
+        // ========== DADOS DOS SERVIÇOS ==========
         const servicesData = [
             {
                 category: "Movimento de Terras",
@@ -712,6 +740,9 @@
         // Renderizar serviços
         function renderServices() {
             const container = document.getElementById('servicesContainer');
+            if (!container) return;
+            
+            container.innerHTML = '';
             
             servicesData.forEach((category, index) => {
                 const categoryDiv = document.createElement('div');
@@ -744,7 +775,9 @@
         // Toggle categoria
         function toggleCategory(index) {
             const list = document.getElementById(`category-${index}`);
-            const header = list.previousElementSibling;
+            const header = list?.previousElementSibling;
+            
+            if (!list) return;
             
             const isActive = list.classList.contains('active');
             
@@ -760,55 +793,16 @@
             // Abrir clicado (se estava fechado)
             if (!isActive) {
                 list.classList.add('active');
-                header.classList.add('active');
+                header?.classList.add('active');
                 list.style.maxHeight = list.scrollHeight + "px";
             }
         }
 
-        // Inicializar
-        renderServices();
-        
-        // Abrir primeira categoria por padrão
-        setTimeout(() => toggleCategory(0), 100);
-    <script>
-    // Data e hora automática
-    function updateDateTime() {
-        const now = new Date();
-        const formatted = now.toLocaleString('pt-PT', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit'
+        // Inicializar tudo quando DOM estiver pronto
+        document.addEventListener('DOMContentLoaded', function() {
+            renderServices();
+            setTimeout(() => toggleCategory(0), 100);
         });
-        document.getElementById('updateTime').textContent = formatted;
-    }
-
-    // Atualizar imediatamente e a cada segundo
-    updateDateTime();
-    setInterval(updateDateTime, 1000);
-
-    // Dados completos - 78 serviços em 21 categorias
-    const servicesData = [
-        // ... (mantenha todo o resto do seu código igual)
-    ];
-
-    // Renderizar serviços
-    function renderServices() {
-        // ... (mantenha igual)
-    }
-
-    // Toggle categoria
-    function toggleCategory(index) {
-        // ... (mantenha igual)
-    }
-
-    // Inicializar
-    renderServices();
-    setTimeout(() => toggleCategory(0), 100);
-</script>
+    </script>
 </body>
-
 </html>
-
