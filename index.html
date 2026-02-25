@@ -463,7 +463,7 @@
                 <div class="header-text">
                     <h1>LSF <span>BUILD</span></h1>
                     <div class="subtitle">Construção em Aço Leve - Tabela de Preços</div>
-                    <div class="update-time">Atualizado: <span id="updateTime">25/02/2026, 12:30:07</span></div>
+                    <div class="update-time">Atualizado: <span id="updateTime">Carregando...</span></div>
                 </div>
             </div>
         </div>
@@ -770,7 +770,45 @@
         
         // Abrir primeira categoria por padrão
         setTimeout(() => toggleCategory(0), 100);
-    </script>
+    <script>
+    // Data e hora automática
+    function updateDateTime() {
+        const now = new Date();
+        const formatted = now.toLocaleString('pt-PT', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+        document.getElementById('updateTime').textContent = formatted;
+    }
+
+    // Atualizar imediatamente e a cada segundo
+    updateDateTime();
+    setInterval(updateDateTime, 1000);
+
+    // Dados completos - 78 serviços em 21 categorias
+    const servicesData = [
+        // ... (mantenha todo o resto do seu código igual)
+    ];
+
+    // Renderizar serviços
+    function renderServices() {
+        // ... (mantenha igual)
+    }
+
+    // Toggle categoria
+    function toggleCategory(index) {
+        // ... (mantenha igual)
+    }
+
+    // Inicializar
+    renderServices();
+    setTimeout(() => toggleCategory(0), 100);
+</script>
 </body>
 
 </html>
+
