@@ -522,287 +522,223 @@
     </div>
 
         <script>
-        // DATA E HORA AUTOMÁTICA - Função isolada
-        function updateDateTime() {
-            try {
-                const now = new Date();
-                const day = String(now.getDate()).padStart(2, '0');
-                const month = String(now.getMonth() + 1).padStart(2, '0');
-                const year = now.getFullYear();
-                const hours = String(now.getHours()).padStart(2, '0');
-                const minutes = String(now.getMinutes()).padStart(2, '0');
-                const seconds = String(now.getSeconds()).padStart(2, '0');
-                
-                const formatted = `${day}/${month}/${year}, ${hours}:${minutes}:${seconds}`;
-                
-                const element = document.getElementById('updateTime');
-                if (element) {
-                    element.textContent = formatted;
-                }
-            } catch (e) {
-                console.error('Erro ao atualizar data:', e);
+    // CONFIGURAÇÃO - URL do webhook n8n
+    const N8N_WEBHOOK = 'http://localhost:5678/webhook-test/precos-atualizados';
+    
+    // Variável global para dados
+    let servicesData = [];
+    
+    // DATA E HORA AUTOMÁTICA
+    function updateDateTime() {
+        try {
+            const now = new Date();
+            const day = String(now.getDate()).padStart(2, '0');
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const year = now.getFullYear();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            
+            const formatted = `${day}/${month}/${year}, ${hours}:${minutes}:${seconds}`;
+            
+            const element = document.getElementById('updateTime');
+            if (element) {
+                element.textContent = formatted;
             }
+        } catch (e) {
+            console.error('Erro ao atualizar data:', e);
         }
+    }
 
-        // Executar imediatamente
-        updateDateTime();
-        
-        // Atualizar a cada segundo
-        setInterval(updateDateTime, 1000);
-
-        // ========== DADOS DOS SERVIÇOS ==========
-        const servicesData = [
+    // CARREGAR DADOS DO N8N/AIRTABLE
+    async function carregarDados() {
+        try {
+            // Mostrar loading
+            const container = document.getElementById('servicesContainer');
+            if (container) {
+                container.innerHTML = '<div style="padding: 30px; text-align: center; color: #E31E24;">Carregando dados...</div>';
+            }
+            
+            const response = await fetch(N8N_WEBHOOK);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            // Verificar se tem dados
+            if (!data || !data.categorias) {
+                throw new Error('Dados inválidos');
+            }
+            
+            // Atualizar cards de resumo
+            if (document.getElementById('totalCategories')) {
+                document.getElementById('totalCategories').textContent = data.total_categorias || 0;
+            }
+            if (document.getElementById('totalServices')) {
+                document.getElementById('totalServices').textContent = data.total_servicos || 0;
+            }
+            if (document.getElementById('avgPrice')) {
+                document.getElementById('avgPrice').textContent = (data.media_preco || 0) + '€';
+            }
+            if (document.getElementById('updateTime')) {
+                document.getElementById('updateTime').textContent = data.ultima_atualizacao || updateDateTime();
+            }
+            
+            // Transformar para formato do dashboard
+            const categoriasArray = Object.entries(data.categorias);
+            servicesData = categoriasArray.map(([categoria, servicos], index) => ({
+                category: `${index + 1}. ${categoria}`,
+                services: servicos.map(s => ({
+                    name: s.descricao || s.name || 'Sem descrição',
+                    unit: s.unidade || s.unit || 'un',
+                    price: parseFloat(s.preco || s.price || 0),
+                    fonte: s.fonte || 'Manual'
+                }))
+            }));
+            
+            // Renderizar
+            renderServices();
+            
+        } catch (e) {
+            console.error('Erro ao carregar dados:', e);
+            // Fallback: usar dados locais se falhar
+            usarDadosLocais();
+        }
+    }
+    
+    // FALLBACK - Dados locais se API falhar
+    function usarDadosLocais() {
+        servicesData = [
             {
-                category: "Movimento de Terras",
+                category: "1. Movimento de Terras",
                 services: [
-                    { name: "Aterro compactado com materiais selecionados (material + máquina + operador)", unit: "m2", price: 8.00 },
-                    { name: "Escavação mecânica para cabouços fundação", unit: "m2", price: 15.00 },
-                    { name: "[INFO - NÃO SOMA NO ORÇAMENTO] Custo máquina retroescavadora/camião com operador - referência para o cliente", unit: "hora", price: 80.00 },
-                    { name: "Transporte de terras sobrantes a vazadouro autorizado (camião + taxa)", unit: "m2", price: 3.00 }
+                    { name: "Aterro compactado com materiais selecionados (material + máquina + operador)", unit: "m2", price: 8.00, fonte: "Manual" },
+                    { name: "Escavação mecânica para cabouços fundação", unit: "m2", price: 15.00, fonte: "Manual" },
+                    { name: "Transporte de terras sobrantes a vazadouro autorizado (camião + taxa)", unit: "m2", price: 3.00, fonte: "Manual" }
                 ]
             },
             {
-                category: "Fundações",
+                category: "2. Fundações",
                 services: [
-                    { name: "Impermeabilização perímetro paredes exteriores e interiores com tela asfáltica betuminosa", unit: "m2", price: 6.00 },
-                    { name: "Laje ensoleiramento geral betão armado C25/30 com malha electrosoldada e acabamento", unit: "m2", price: 38.00 },
-                    { name: "Viga de fundação 20x30cm perímetro paredes exteriores e interiores em betão armado C25/30 incluindo cofragem e armadura", unit: "m3", price: 30.00 }
+                    { name: "Impermeabilização perímetro paredes exteriores e interiores com tela asfáltica betuminosa", unit: "m2", price: 6.00, fonte: "Manual" },
+                    { name: "Laje ensoleiramento geral betão armado C25/30 com malha electrosoldada e acabamento", unit: "m2", price: 38.00, fonte: "Manual" },
+                    { name: "Viga de fundação 20x30cm perímetro paredes exteriores e interiores em betão armado C25/30 incluindo cofragem e armadura", unit: "m3", price: 30.00, fonte: "Manual" }
                 ]
             },
             {
-                category: "Estrutura LSF",
+                category: "3. Estrutura LSF",
                 services: [
-                    { name: "Estrutura LSF cobertura perfis aço galvanizado (asnãs+madres+contraventamento)", unit: "m2", price: 32.00 },
-                    { name: "Estrutura LSF paredes exteriores perfis aço galvanizado S350GD+Z275 (montantes+travessas+reforços)", unit: "m2", price: 28.00 },
-                    { name: "Estrutura LSF paredes interiores perfis aço galvanizado C90 (montantes+travessas divisorias)", unit: "m2", price: 22.00 },
-                    { name: "Laje piso intermédio sistema misto LSF (perfis+OSB+isolamento acústico)", unit: "m2", price: 45.00 }
-                ]
-            },
-            {
-                category: "Isolamento",
-                services: [
-                    { name: "Sistema ETICS completo 80mm", unit: "m2", price: 20.00 },
-                    { name: "Isolamento acústico lã mineral 50mm (paredes interiores)", unit: "m2", price: 4.00 },
-                    { name: "Isolamento lã rocha 100mm cobertura", unit: "m2", price: 4.50 },
-                    { name: "Poliestireno expandido EPS 40mm", unit: "m2", price: 6.00 },
-                    { name: "Poliestireno extrudido XPS 40mm", unit: "m2", price: 4.00 }
-                ]
-            },
-            {
-                category: "Cobertura",
-                services: [
-                    { name: "Calha alumínio lacado 125mm", unit: "ml", price: 10.00 },
-                    { name: "Estrutura secundária cobertura (varas, ripas, contra-ripas, fixações)", unit: "m2", price: 18.00 },
-                    { name: "Painel sandwich 50mm (cobertura)", unit: "m2", price: 15.00 },
-                    { name: "Painel sandwich 80mm (cobertura)", unit: "m2", price: 15.00 },
-                    { name: "RUFOS", unit: "ml", price: 10.00 },
-                    { name: "Telha cerâmica Lusa", unit: "m2", price: 12.00 }
-                ]
-            },
-            {
-                category: "Impermeabilização",
-                services: [
-                    { name: "Tela Betuminosa Asfáltica Impermeabilização Polyxis 40", unit: "m2", price: 12.00 },
-                    { name: "Impermeabilizante líquido para WCs e zonas húmidas", unit: "kg", price: 8.00 },
-                    { name: "Membrana respirável AXTON 135g 75m2", unit: "m2", price: 5.00 }
-                ]
-            },
-            {
-                category: "Revestimentos",
-                services: [
-                    { name: "Placa de gesso cartonado fire 15mm 2500 Progyp", unit: "m2", price: 8.00 },
-                    { name: "Placa Gesso Cartonado Knauf Hidrófuga H1 BA13", unit: "m2", price: 10.00 },
-                    { name: "Placa OSB3 18mm (2500x1250)", unit: "m2", price: 7.00 },
-                    { name: "Revestimento estrutural parede exterior em OSB 12mm incluindo fixações", unit: "m2", price: 7.00 },
-                    { name: "Placa fibrocimento 8mm", unit: "m2", price: 12.00 }
-                ]
-            },
-            {
-                category: "Acabamentos",
-                services: [
-                    { name: "AZULEJO MÉDIO", unit: "m²", price: 14.00 },
-                    { name: "Cozinha modular completa (módulos+bancada+eletro)", unit: "ml", price: 45.00 },
-                    { name: "BETONILHA", unit: "m²", price: 10.00 },
-                    { name: "PAVIMENTO DECK", unit: "m²", price: 22.00 },
-                    { name: "ESPELHO WC", unit: "un", price: 25.00 },
-                    { name: "MÓVEIS COZINHA MÉDIO", unit: "ml", price: 80.00 },
-                    { name: "MÓVEL WC", unit: "un", price: 80.00 },
-                    { name: "PAVIMENTO CERÂMICO MÉDIO", unit: "m²", price: 14.00 },
-                    { name: "PAVIMENTO EXTERIOR CERÂMICO", unit: "m²", price: 12.00 },
-                    { name: "PAVIMENTO MADEIRA FLUTUANTE", unit: "m²", price: 8.00 },
-                    { name: "PAVIMENTO VINÍLICO", unit: "m²", price: 8.00 },
-                    { name: "Pintura interior tinta plástica 2 demãos (paredes e tetos)", unit: "m2", price: 6.00 },
-                    { name: "RODAPÉ", unit: "ml", price: 3.00 },
-                    { name: "TOALHEIRO", unit: "un", price: 20.00 }
-                ]
-            },
-            {
-                category: "Caixilharias e Portas",
-                services: [
-                    { name: "PORTA ENTRADA", unit: "un", price: 180.00 },
-                    { name: "PORTA INTERIOR MÉDIA", unit: "un", price: 65.00 }
-                ]
-            },
-            {
-                category: "Caixilharias",
-                services: [
-                    { name: "Janela PVC Cortizo - standard (base para todas as gamas)", unit: "m2", price: 45.00 }
-                ]
-            },
-            {
-                category: "Hidráulica",
-                services: [
-                    { name: "BASE DUCHE 100X80", unit: "un", price: 55.00 },
-                    { name: "Bomba de calor AQS 200L", unit: "un", price: 350.00 },
-                    { name: "Caixa de gorduras para cozinha", unit: "un", price: 35.00 },
-                    { name: "Caixa de visita esgoto 60x60cm", unit: "un", price: 20.00 },
-                    { name: "ESQUENTADOR", unit: "un", price: 100.00 },
-                    { name: "LAVATÓRIO SUSPENSO", unit: "un", price: 35.00 },
-                    { name: "SANITA CHÃO", unit: "un", price: 45.00 },
-                    { name: "Termoacumulador eléctrico 150L", unit: "un", price: 150.00 },
-                    { name: "TERMOACUMULADOR 80L", unit: "un", price: 120.00 },
-                    { name: "TORNEIRA DUCHE", unit: "un", price: 45.00 },
-                    { name: "TORNEIRA LAVATÓRIO", unit: "un", price: 35.00 }
-                ]
-            },
-            {
-                category: "Casas de Banho",
-                services: [
-                    { name: "Montagem de resguardo de duche em vidro temperado 8mm com perfil cromado", unit: "un", price: 100.00 }
-                ]
-            },
-            {
-                category: "Cozinha",
-                services: [
-                    { name: "Montagem de lava-louça em inox 1.5 cubas com escorredor e válvula", unit: "un", price: 55.00 },
-                    { name: "Montagem de torneira monocomando de cozinha com bica alta e chuveiro extraível", unit: "un", price: 35.00 }
-                ]
-            },
-            {
-                category: "Elétrica",
-                services: [
-                    { name: "Instalação elétrica completa + ITED (quadro, cablagem, pontos luz/tomada, videoporteiro, certificação)", unit: "m2", price: 22.00 }
-                ]
-            },
-            {
-                category: "AVAC",
-                services: [
-                    { name: "Multi-split 2 unidades interiores + exterior", unit: "un", price: 650.00 },
-                    { name: "AR CONDICIONADO SPLIT", unit: "un", price: 450.00 },
-                    { name: "PAINEL SOLAR TÉRMICO", unit: "un", price: 500.00 },
-                    { name: "PISO RADIANTE", unit: "m²", price: 18.00 },
-                    { name: "VMC duplo fluxo com recuperador de calor", unit: "un", price: 380.00 }
-                ]
-            },
-            {
-                category: "Estaleiro",
-                services: [
-                    { name: "ESTALEIRO", unit: "vg", price: 400.00 },
-                    { name: "Ligações provisórias (água+luz+esgoto)", unit: "vg", price: 250.00 },
-                    { name: "LIMPEZA OBRA", unit: "m²", price: 3.50 }
-                ]
-            },
-            {
-                category: "Ligações Externas",
-                services: [
-                    { name: "Execução de ramal de ligação à rede pública de abastecimento de água (EPAL/câmara municipal), incluindo abertura e tapamento de vala, tubagem PEAD, válvulas de secionamento, contador e acessórios - até 25 metros", unit: "vg", price: 300.00 },
-                    { name: "Execução de ramal de ligação à rede eléctrica pública (E-Redes), incluindo abertura e tapamento de vala, cabo alimentação, caixa de contagem, quadro de entrada e portinhola - até 25 metros", unit: "vg", price: 500.00 }
-                ]
-            },
-            {
-                category: "Muros e Vedações",
-                services: [
-                    { name: "Reboco projectado para muros de vedação (argamassa + aplicação)", unit: "m2", price: 10.00 },
-                    { name: "Reboco projectado exterior hidrofugado para muros de vedação", unit: "m2", price: 12.00 }
-                ]
-            },
-            {
-                category: "Exterior",
-                services: [
-                    { name: "RELVA NATURAL", unit: "m²", price: 5.00 },
-                    { name: "RELVA SINTÉTICA", unit: "m²", price: 10.00 }
-                ]
-            },
-            {
-                category: "Fixações",
-                services: [
-                    { name: "Parafuso OSB 4.5x45mm", unit: "un", price: 8.00 }
-                ]
-            },
-            {
-                category: "Perfis LSF",
-                services: [
-                    { name: "Montante C150 x 1.0mm galvanizado", unit: "ml", price: 6.00 }
+                    { name: "Estrutura LSF cobertura perfis aço galvanizado (asnãs+madres+contraventamento)", unit: "m2", price: 32.00, fonte: "Fornecedor" },
+                    { name: "Estrutura LSF paredes exteriores perfis aço galvanizado S350GD+Z275 (montantes+travessas+reforços)", unit: "m2", price: 28.00, fonte: "Fornecedor" },
+                    { name: "Estrutura LSF paredes interiores perfis aço galvanizado C90 (montantes+travessas divisorias)", unit: "m2", price: 22.00, fonte: "Fornecedor" },
+                    { name: "Laje piso intermédio sistema misto LSF (perfis+OSB+isolamento acústico)", unit: "m2", price: 45.00, fonte: "Fornecedor" }
                 ]
             }
         ];
+        
+        // Atualizar contadores
+        if (document.getElementById('totalCategories')) {
+            document.getElementById('totalCategories').textContent = servicesData.length;
+        }
+        if (document.getElementById('totalServices')) {
+            document.getElementById('totalServices').textContent = servicesData.reduce((a, b) => a + b.services.length, 0);
+        }
+        if (document.getElementById('avgPrice')) {
+            const m2Services = servicesData.flatMap(c => c.services).filter(s => s.unit === 'm2');
+            const avg = m2Services.reduce((a, s) => a + s.price, 0) / m2Services.length;
+            document.getElementById('avgPrice').textContent = avg.toFixed(2) + '€';
+        }
+        
+        renderServices();
+        
+        // Mostrar aviso
+        const container = document.getElementById('servicesContainer');
+        if (container) {
+            const aviso = document.createElement('div');
+            aviso.style.cssText = 'padding: 10px; background: rgba(227, 30, 36, 0.1); color: #E31E24; margin-bottom: 20px; border-radius: 8px; text-align: center;';
+            aviso.innerHTML = '⚠️ Usando dados locais. API indisponível.';
+            container.insertBefore(aviso, container.firstChild);
+        }
+    }
 
-        // Renderizar serviços
-        function renderServices() {
-            const container = document.getElementById('servicesContainer');
-            if (!container) return;
+    // RENDERIZAR SERVIÇOS
+    function renderServices() {
+        const container = document.getElementById('servicesContainer');
+        if (!container) return;
+        
+        container.innerHTML = '';
+        
+        servicesData.forEach((category, index) => {
+            const categoryDiv = document.createElement('div');
+            categoryDiv.className = 'category';
             
-            container.innerHTML = '';
-            
-            servicesData.forEach((category, index) => {
-                const categoryDiv = document.createElement('div');
-                categoryDiv.className = 'category';
-                
-                categoryDiv.innerHTML = `
-                    <div class="category-header" onclick="toggleCategory(${index})">
-                        <div class="category-name">
-                            <span class="toggle-icon">▼</span>
-                            <span class="category-number">${index + 1}.</span>
-                            ${category.category}
-                        </div>
-                        <span class="category-count">${category.services.length} serviços</span>
+            categoryDiv.innerHTML = `
+                <div class="category-header" onclick="toggleCategory(${index})">
+                    <div class="category-name">
+                        <span class="toggle-icon">▼</span>
+                        <span class="category-number">${index + 1}.</span>
+                        ${category.category.replace(/^\d+\.\s/, '')}
                     </div>
-                    <div class="services-list" id="category-${index}">
-                        ${category.services.map(service => `
-                            <div class="service-row">
-                                <div class="service-name">${service.name}</div>
-                                <div class="service-unit">${service.unit}</div>
-                                <div class="service-price">${service.price.toFixed(2)} €</div>
+                    <span class="category-count">${category.services.length} serviços</span>
+                </div>
+                <div class="services-list" id="category-${index}">
+                    ${category.services.map(service => `
+                        <div class="service-row">
+                            <div class="service-name">
+                                ${service.name}
+                                ${service.fonte ? `<small style="color: #64748b; display: block; font-size: 0.75em; margin-top: 4px;">Fonte: ${service.fonte}</small>` : ''}
                             </div>
-                        `).join('')}
-                    </div>
-                `;
-                
-                container.appendChild(categoryDiv);
-            });
-        }
-
-        // Toggle categoria
-        function toggleCategory(index) {
-            const list = document.getElementById(`category-${index}`);
-            const header = list?.previousElementSibling;
+                            <div class="service-unit">${service.unit}</div>
+                            <div class="service-price">${service.price.toFixed(2)} €</div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
             
-            if (!list) return;
-            
-            const isActive = list.classList.contains('active');
-            
-            // Fechar todos
-            document.querySelectorAll('.services-list').forEach(el => {
-                el.classList.remove('active');
-                el.style.maxHeight = null;
-            });
-            document.querySelectorAll('.category-header').forEach(el => {
-                el.classList.remove('active');
-            });
-            
-            // Abrir clicado (se estava fechado)
-            if (!isActive) {
-                list.classList.add('active');
-                header?.classList.add('active');
-                list.style.maxHeight = list.scrollHeight + "px";
-            }
-        }
-
-        // Inicializar tudo quando DOM estiver pronto
-        document.addEventListener('DOMContentLoaded', function() {
-            renderServices();
-            setTimeout(() => toggleCategory(0), 100);
+            container.appendChild(categoryDiv);
         });
-    </script>
+    }
+
+    // TOGGLE CATEGORIA
+    function toggleCategory(index) {
+        const list = document.getElementById(`category-${index}`);
+        const header = list?.previousElementSibling;
+        
+        if (!list) return;
+        
+        const isActive = list.classList.contains('active');
+        
+        // Fechar todos
+        document.querySelectorAll('.services-list').forEach(el => {
+            el.classList.remove('active');
+            el.style.maxHeight = null;
+        });
+        document.querySelectorAll('.category-header').forEach(el => {
+            el.classList.remove('active');
+        });
+        
+        // Abrir clicado (se estava fechado)
+        if (!isActive) {
+            list.classList.add('active');
+            header?.classList.add('active');
+            list.style.maxHeight = list.scrollHeight + "px";
+        }
+    }
+
+    // INICIALIZAR
+    document.addEventListener('DOMContentLoaded', function() {
+        updateDateTime();
+        setInterval(updateDateTime, 1000);
+        
+        // Tentar carregar da API
+        carregarDados();
+        
+        // Atualizar a cada 5 minutos
+        setInterval(carregarDados, 300000);
+    });
+</script>
 </body>
 </html>
+
