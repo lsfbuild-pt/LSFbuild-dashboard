@@ -738,8 +738,12 @@
         // Atualizar a cada 5 minutos
         setInterval(carregarDados, 300000);
     });
+               // FORÇAR URL DE PRODUÇÃO - sobrescreve qualquer valor anterior
+const N8N_WEBHOOK = 'http://localhost:5678/webhook/precos-atualizados';
+console.log('Webhook URL:', N8N_WEBHOOK); // verifique no console
 </script>
 </body>
 </html>
+
 
 
